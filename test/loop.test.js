@@ -137,3 +137,31 @@ test("completion requests set a bounded max_tokens", async () => {
   assert.equal(typeof max, "number");
   assert.ok(max > 0 && max <= 2000, `got ${max}`);
 });
+
+const forecastPayload = { data: { items: [{ forecasts: [{ area: "Kallang", forecast: "Fair" }] }] } };
+
+test("identical tool calls in one turn hit upstream once", async () => {
+  const same = Array.from({ length: 5 }, (_, i) => toolCall("get_rain_forecast", {}, `t${i}`));
+  const calls = stub({
+    llm: (body, n) => (n === 1 ? { role: "assistant", content: null, tool_calls: same } : say("ok")),
+    other: () => forecastPayload,
+  });
+  assert.equal(await runLoop([], "rain?", ENV), "ok");
+  assert.equal(calls.other.length, 1);
+  const toolMsgs = calls.llm[1].body.messages.filter((m) => m.role === "tool");
+  assert.deepEqual(toolMsgs.map((m) => m.tool_call_id), ["t0", "t1", "t2", "t3", "t4"]);
+});
+
+test("tool calls per turn are capped and every call still gets a result", async () => {
+  const many = Array.from({ length: 20 }, (_, i) =>
+    toolCall("get_bus_arrivals", { stop_code: String(10000 + i) }, `t${i}`),
+  );
+  const calls = stub({
+    llm: (body, n) => (n === 1 ? { role: "assistant", content: null, tool_calls: many } : say("ok")),
+    other: () => ({ services: [] }),
+  });
+  await runLoop([], "buses?", ENV);
+  assert.ok(calls.other.length <= 6, `upstream calls: ${calls.other.length}`);
+  const toolMsgs = calls.llm[1].body.messages.filter((m) => m.role === "tool");
+  assert.equal(toolMsgs.length, 20);
+});

@@ -6,6 +6,8 @@ const LLM_MODEL = "glm-5";
 
 const LLM_TIMEOUT_MS = 20_000;
 const MAX_ROUNDS = 8;
+// Each tool call can hit a billed API, so cap them per turn.
+const MAX_TOOL_CALLS_PER_TURN = 6;
 // Uncle replies in under 120 words, but a reasoning model also spends tokens thinking.
 const MAX_OUTPUT_TOKENS = 1500;
 // Stop calling tools once a turn has run this long, then ask for a final answer.
@@ -40,6 +42,8 @@ export async function runLoop(history, message, env) {
   const sessionId = crypto.randomUUID();
 
   const deadline = Date.now() + TURN_BUDGET_MS;
+  const toolResults = new Map(); // name+args -> result, so repeats are free
+  let toolRuns = 0;
 
   for (let round = 0; round < MAX_ROUNDS && Date.now() < deadline; round++) {
     const assistant = await callModel(messages, env, sessionId);
@@ -54,12 +58,21 @@ export async function runLoop(history, message, env) {
       const name = call?.function?.name ?? "";
       const args = parseArgs(call?.function?.arguments);
       console.log(`round ${round}: ${name}`, args);
-      let result;
-      try {
-        result = await executeTool(name, args, env);
-      } catch (err) {
-        console.error(`tool ${name} failed:`, err);
-        result = JSON.stringify({ error: "Tool failed, try without it." });
+      const key = `${name}:${JSON.stringify(args)}`;
+      let result = toolResults.get(key);
+      if (result === undefined) {
+        if (toolRuns >= MAX_TOOL_CALLS_PER_TURN) {
+          result = JSON.stringify({ error: "Too many tool calls, answer with what you have." });
+        } else {
+          toolRuns++;
+          try {
+            result = await executeTool(name, args, env);
+          } catch (err) {
+            console.error(`tool ${name} failed:`, err);
+            result = JSON.stringify({ error: "Tool failed, try without it." });
+          }
+          toolResults.set(key, result);
+        }
       }
       messages.push({
         role: "tool",
