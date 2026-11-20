@@ -20,7 +20,5 @@ How you work:
  * Build the system prompt for one request.
  */
 export function buildSystemPrompt() {
-  const requestId = crypto.randomUUID();
-  const now = new Date().toISOString();
-  return `Request ${requestId} at ${now}. ${PERSONA}`;
+  return PERSONA;
 }
