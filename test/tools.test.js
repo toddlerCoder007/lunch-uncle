@@ -25,3 +25,9 @@ test("formatPlaces reports open status and tolerates missing fields", () => {
   assert.ok(a.distance_m > 400 && a.distance_m < 550, `got ${a.distance_m}`);
   assert.deepEqual(b, { name: "No Info", rating: null, distance_m: null, open_now: null });
 });
+
+import { formatForecast } from "../src/tools.js";
+
+test("formatForecast does not throw when forecasts is missing", () => {
+  assert.doesNotThrow(() => formatForecast({ data: { items: [{}] } }, "Kallang"));
+});

@@ -184,7 +184,7 @@ export function formatForecast(payload, area) {
   if (!item) {
     return { error: "No forecast available" };
   }
-  const entry = item.forecasts.find((f) => f.area === area);
+  const entry = item.forecasts?.find((f) => f.area === area);
   return {
     area,
     forecast: entry?.forecast ?? "Unknown",
