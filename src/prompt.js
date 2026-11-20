@@ -17,6 +17,24 @@ How you work:
 - Keep replies under 120 words.`;
 
 /**
+ * Current Singapore time as a sentence. It goes on the last user message, not
+ * in the system prompt, so the cacheable prefix stays identical between turns.
+ */
+export function timeContext(now = new Date()) {
+  const text = new Intl.DateTimeFormat("en-SG", {
+    timeZone: "Asia/Singapore",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(now);
+  return `Current time in Singapore: ${text}.`;
+}
+
+/**
  * Build the system prompt for one request.
  */
 export function buildSystemPrompt() {

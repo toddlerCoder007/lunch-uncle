@@ -1,4 +1,4 @@
-import { buildSystemPrompt } from "./prompt.js";
+import { buildSystemPrompt, timeContext } from "./prompt.js";
 import { toolDefinitions, executeTool } from "./tools.js";
 
 const LLM_BASE_URL = "https://opencode.ai/inference/go/openai/v1";
@@ -34,7 +34,9 @@ export async function runLoop(history, message, env) {
   const messages = [
     { role: "system", content: buildSystemPrompt() },
     ...history,
-    { role: "user", content: message },
+    { role: "user", content: `${message}
+
+(${timeContext()})` },
   ];
 
   // One session id per turn, shared by every model call in this loop run,

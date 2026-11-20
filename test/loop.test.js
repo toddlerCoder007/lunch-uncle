@@ -165,3 +165,13 @@ test("tool calls per turn are capped and every call still gets a result", async 
   const toolMsgs = calls.llm[1].body.messages.filter((m) => m.role === "tool");
   assert.equal(toolMsgs.length, 20);
 });
+
+test("the current Singapore time is added to the user message, not the cached prefix", async () => {
+  const a = stub({ llm: () => say("ok") });
+  await runLoop([{ role: "user", content: "earlier" }, { role: "assistant", content: "ok" }], "lunch?", ENV);
+  const msgs = a.llm[0].body.messages;
+  assert.match(msgs.at(-1).content, /^lunch\?/);
+  assert.match(msgs.at(-1).content, /Singapore/);
+  assert.doesNotMatch(msgs[0].content, /Singapore time|Current time/);
+  assert.equal(msgs[1].content, "earlier");
+});
