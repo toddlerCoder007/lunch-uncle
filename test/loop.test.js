@@ -57,3 +57,19 @@ test("food questions reach the model instead of the canned fallback", async () =
   assert.equal(reply, "Go Tiong Bahru lah.");
   assert.equal(calls.llm.length, 1);
 });
+
+test("a tool that throws becomes an error result instead of failing the turn", async () => {
+  const calls = stub({
+    llm: (body, n) =>
+      n === 1
+        ? { role: "assistant", content: null, tool_calls: [toolCall("get_rain_forecast", {})] }
+        : say("Cannot check weather, just bring umbrella."),
+    other: () => {
+      throw new Error("network down");
+    },
+  });
+  const reply = await runLoop([], "will it rain", ENV);
+  assert.equal(reply, "Cannot check weather, just bring umbrella.");
+  const toolMsg = calls.llm[1].body.messages.find((m) => m.role === "tool");
+  assert.match(toolMsg.content, /error/i);
+});

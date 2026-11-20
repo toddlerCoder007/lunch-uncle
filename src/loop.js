@@ -42,7 +42,13 @@ export async function runLoop(history, message, env) {
     for (const call of toolCalls) {
       const args = parseArgs(call.function.arguments);
       console.log(`round ${round}: ${call.function.name}`, args);
-      const result = await executeTool(call.function.name, args, env);
+      let result;
+      try {
+        result = await executeTool(call.function.name, args, env);
+      } catch (err) {
+        console.error(`tool ${call.function.name} failed:`, err);
+        result = JSON.stringify({ error: "Tool failed, try without it." });
+      }
       messages.push({
         role: "tool",
         tool_call_id: call.id,
