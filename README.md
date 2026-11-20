@@ -6,6 +6,16 @@ Lunch Uncle is a chatbot that tells you where to eat lunch near CT Hub 2, Lavend
 
 Lunch Uncle runs as a single Cloudflare Worker. `src/index.js` routes requests: `GET /` serves the chat page from `src/ui.html`, and `POST /chat` hands the turn to the agentic loop in `src/loop.js`. The loop calls an OpenAI-compatible chat completions endpoint, passing the tool definitions from `src/tools.js`. When the model asks for a tool call, the loop runs it, appends the result to the message list, and calls the model again. This repeats until the model gives a final answer with no more tool calls. `src/prompt.js` builds the system prompt that sets Uncle's persona and rules. There are three tools: `find_lunch_places`, which queries the Google Places API (New) Text Search, biased towards CT Hub 2; `get_rain_forecast`, which reads the two-hour forecast from data.gov.sg (no key needed); and `get_bus_arrivals`, which reads live arrivals from arrivelah (no key needed).
 
+## Limits and failure behaviour
+
+- The loop makes at most 8 model calls per turn and stops calling tools after 60 seconds. It then asks the model for a final answer without tools, using whatever the tools already returned.
+- Each turn runs at most 6 tool calls. Identical calls in a turn reuse the first result.
+- `/chat` rejects messages over 500 characters and history entries over 2,000 characters, and keeps only the last 20 history messages.
+- Tool fetches time out after 8 seconds and return an error result the model can work around.
+- Without `GOOGLE_PLACES_API_KEY`, place search returns an error result, so Uncle says he cannot search; rain and bus questions still work. Without `OPENCODE_API_KEY`, `/chat` returns a 500 and the log says why.
+- `POST /chat` is limited to 10 requests per minute per client IP by the `CHAT_LIMITER` rate limiting binding in `wrangler.toml`; extra requests get a 429 with `Retry-After`. Without the binding (plain local dev) the limit is off.
+- The current Singapore time is appended to the last user message so Uncle can judge lunchtime without changing the cached system prompt.
+
 ## Request flow
 
 ```mermaid
@@ -42,7 +52,7 @@ sequenceDiagram
    OPENCODE_API_KEY=your-key-here
    GOOGLE_PLACES_API_KEY=your-key-here
    ```
-4. Fill in the two `TODO` constants at the top of `src/loop.js`: `LLM_BASE_URL` and `LLM_MODEL`, for the OpenCode Go endpoint and model. The Go endpoint requires an `x-opencode-session` header, which `callModel` already sends.
+4. `LLM_BASE_URL` and `LLM_MODEL` at the top of `src/loop.js` point at the OpenCode Go endpoint and `deepseek-v4.1-flash`. The endpoint lists its models at `/v1/models`, and a model that is not on that list fails every request with a 400. Change them there to use another model. The Go endpoint requires an `x-opencode-session` header, which `callModel` already sends.
 5. Start the dev server:
    ```sh
    npm run dev

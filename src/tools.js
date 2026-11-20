@@ -10,8 +10,29 @@
 export const CT_HUB_2 = { latitude: 1.3115, longitude: 103.8615 };
 
 const SEARCH_RADIUS_METRES = 800;
+// locationBias is only a hint, so drop results that are too far to walk at lunch.
+export const WALKING_LIMIT_M = 1200;
 const MAX_PLACES = 10;
+export const MAX_BUS_SERVICES = 8;
+
+// Only what formatPlaces reads; a wider mask can bill at a higher tier.
+export const PLACES_FIELD_MASK =
+  "places.displayName,places.location,places.rating,places.currentOpeningHours,places.types";
+
+// Without a type filter in the search, a query like "japanese" can match a hair
+// salon, so keep only places Google types as somewhere to eat or drink.
+const FOOD_TYPES = new Set([
+  "restaurant", "food", "food_court", "cafe", "coffee_shop", "bakery", "bar",
+  "meal_takeaway", "meal_delivery", "dessert_shop", "ice_cream_shop", "sandwich_shop",
+  "snack_bar", "tea_house", "juice_shop", "deli", "diner",
+]);
+function isFoodPlace(types) {
+  // Unknown type: keep it, the model can judge from the name.
+  if (!Array.isArray(types) || types.length === 0) return true;
+  return types.some((t) => FOOD_TYPES.has(t) || t.endsWith("_restaurant"));
+}
 const FORECAST_AREA = "Kallang";
+const TOOL_TIMEOUT_MS = 8_000;
 
 const PLACES_URL = "https://places.googleapis.com/v1/places:searchText";
 const FORECAST_URL =
@@ -83,6 +104,7 @@ export const toolDefinitions = [
  * Run one tool call requested by the model and return the result as a string.
  */
 export async function executeTool(name, args, env) {
+  args = args && typeof args === "object" ? args : {};
   switch (name) {
     case "find_lunch_places":
       return JSON.stringify(await findLunchPlaces(args, env));
@@ -99,26 +121,39 @@ export async function executeTool(name, args, env) {
 // find_lunch_places
 // ---------------------------------------------------------------------------
 
-async function findLunchPlaces({ query, open_now = false }, env) {
-  const centre = { latitude: 1.3236, longitude: 103.9273 };
-
-  const body = {
+/**
+ * Build the Places Text Search request body, biased towards CT Hub 2.
+ */
+export function buildPlacesRequest({ query, open_now = false }) {
+  return {
     textQuery: query,
-    includedType: "restaurant",
     openNow: open_now,
     pageSize: MAX_PLACES,
     locationBias: {
-      circle: { center: centre, radius: SEARCH_RADIUS_METRES },
+      circle: { center: CT_HUB_2, radius: SEARCH_RADIUS_METRES },
     },
   };
+}
 
-  const res = await fetch(PLACES_URL, {
+function fetchWithTimeout(url, init = {}) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(TOOL_TIMEOUT_MS) });
+}
+
+async function findLunchPlaces(args, env) {
+  if (typeof args.query !== "string" || args.query.trim() === "") {
+    return { error: "query is required" };
+  }
+  if (!env?.GOOGLE_PLACES_API_KEY) {
+    return { error: "Place search is unavailable: GOOGLE_PLACES_API_KEY is not set" };
+  }
+  const body = buildPlacesRequest(args);
+
+  const res = await fetchWithTimeout(PLACES_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "X-Goog-Api-Key": env.GOOGLE_PLACES_API_KEY,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.location,places.rating,places.currentOpeningHours",
+      "X-Goog-FieldMask": PLACES_FIELD_MASK,
     },
     body: JSON.stringify(body),
   });
@@ -128,18 +163,22 @@ async function findLunchPlaces({ query, open_now = false }, env) {
   }
 
   const data = await res.json();
-  return { places: formatPlaces(data.places ?? [], centre) };
+  return { places: formatPlaces(data.places ?? [], CT_HUB_2) };
 }
 
 /**
  * Shape Places API results into the fields Uncle needs.
  */
 export function formatPlaces(places, origin) {
-  return places.map(({ displayName, rating, location }) => ({
-    name: displayName?.text ?? "Unnamed",
-    rating: rating ?? null,
-    distance_m: Math.round(haversineMetres(origin, location)),
-  }));
+  return places
+    .filter((p) => isFoodPlace(p.types))
+    .map(({ displayName, rating, location, currentOpeningHours }) => ({
+      name: displayName?.text ?? "Unnamed",
+      rating: rating ?? null,
+      distance_m: location ? Math.round(haversineMetres(origin, location)) : null,
+      open_now: currentOpeningHours?.openNow ?? null,
+    }))
+    .filter((p) => p.distance_m === null || p.distance_m <= WALKING_LIMIT_M);
 }
 
 /**
@@ -163,7 +202,7 @@ export function haversineMetres(a, b) {
 // ---------------------------------------------------------------------------
 
 async function getRainForecast() {
-  const res = await fetch(FORECAST_URL);
+  const res = await fetchWithTimeout(FORECAST_URL);
   if (!res.ok) {
     return { error: `Forecast API returned ${res.status}` };
   }
@@ -178,10 +217,13 @@ export function formatForecast(payload, area) {
   if (!item) {
     return { error: "No forecast available" };
   }
-  const entry = item.forecasts.find((f) => f.area === area);
+  const entry = item.forecasts?.find((f) => f.area === area);
+  if (!entry) {
+    return { error: `No forecast for ${area}` };
+  }
   return {
     area,
-    forecast: entry?.forecast ?? "Unknown",
+    forecast: entry.forecast,
     valid_period: item.valid_period?.text ?? null,
   };
 }
@@ -191,8 +233,11 @@ export function formatForecast(payload, area) {
 // ---------------------------------------------------------------------------
 
 async function getBusArrivals({ stop_code }) {
+  if (typeof stop_code !== "string" || !/^\d{5}$/.test(stop_code)) {
+    return { error: "stop_code must be a five-digit bus stop code" };
+  }
   const url = `${BUS_URL}?id=${encodeURIComponent(stop_code)}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) {
     return { error: `Bus API returned ${res.status}` };
   }
@@ -206,7 +251,7 @@ export function formatBusArrivals(payload, stopCode) {
   const services = payload?.services ?? [];
   return {
     stop_code: stopCode,
-    services: services.map((s) => ({
+    services: services.slice(0, MAX_BUS_SERVICES).map((s) => ({
       service: s.no,
       next_min: minutesFromNow(s.next),
       subsequent_min: minutesFromNow(s.subsequent),

@@ -13,14 +13,32 @@ How you work:
 - Call get_rain_forecast when the user asks about rain, weather, or whether they should walk.
 - Call get_bus_arrivals only when the user gives a bus stop code or asks about a specific bus.
 - Recommend one or two places, not a list of ten. Say why.
-- If a place is closed, say so and pick something else.
+- If a place is closed, say so and pick something else. If open_now is null the hours are unknown, so say you are not sure it is open.
+- Only recommend places within a short walk: prefer a small distance_m, and say how far each place is.
+- Use the current time at the end of the user message to judge whether it is lunchtime.
 - Keep replies under 120 words.`;
+
+/**
+ * Current Singapore time as a sentence. It goes on the last user message, not
+ * in the system prompt, so the cacheable prefix stays identical between turns.
+ */
+export function timeContext(now = new Date()) {
+  const text = new Intl.DateTimeFormat("en-SG", {
+    timeZone: "Asia/Singapore",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(now);
+  return `Current time in Singapore: ${text}.`;
+}
 
 /**
  * Build the system prompt for one request.
  */
 export function buildSystemPrompt() {
-  const requestId = crypto.randomUUID();
-  const now = new Date().toISOString();
-  return `Request ${requestId} at ${now}. ${PERSONA}`;
+  return PERSONA;
 }
