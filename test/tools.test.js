@@ -31,3 +31,31 @@ import { formatForecast } from "../src/tools.js";
 test("formatForecast does not throw when forecasts is missing", () => {
   assert.doesNotThrow(() => formatForecast({ data: { items: [{}] } }, "Kallang"));
 });
+
+import { executeTool } from "../src/tools.js";
+
+const realFetch = globalThis.fetch;
+
+function recordFetch() {
+  const seen = [];
+  globalThis.fetch = async (url, init = {}) => {
+    seen.push({ url: String(url), init });
+    return new Response(JSON.stringify({}), { status: 200 });
+  };
+  return seen;
+}
+
+test("every tool fetch carries an abort signal so a hung upstream cannot stall the turn", async () => {
+  const seen = recordFetch();
+  try {
+    await executeTool("find_lunch_places", { query: "ramen" }, { GOOGLE_PLACES_API_KEY: "k" });
+    await executeTool("get_rain_forecast", {}, {});
+    await executeTool("get_bus_arrivals", { stop_code: "07371" }, {});
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.equal(seen.length, 3);
+  for (const s of seen) {
+    assert.ok(s.init.signal instanceof AbortSignal, s.url);
+  }
+});

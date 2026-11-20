@@ -12,6 +12,7 @@ export const CT_HUB_2 = { latitude: 1.3115, longitude: 103.8615 };
 const SEARCH_RADIUS_METRES = 800;
 const MAX_PLACES = 10;
 const FORECAST_AREA = "Kallang";
+const TOOL_TIMEOUT_MS = 8_000;
 
 const PLACES_URL = "https://places.googleapis.com/v1/places:searchText";
 const FORECAST_URL =
@@ -114,10 +115,14 @@ export function buildPlacesRequest({ query, open_now = false }) {
   };
 }
 
+function fetchWithTimeout(url, init = {}) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(TOOL_TIMEOUT_MS) });
+}
+
 async function findLunchPlaces(args, env) {
   const body = buildPlacesRequest(args);
 
-  const res = await fetch(PLACES_URL, {
+  const res = await fetchWithTimeout(PLACES_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -169,7 +174,7 @@ export function haversineMetres(a, b) {
 // ---------------------------------------------------------------------------
 
 async function getRainForecast() {
-  const res = await fetch(FORECAST_URL);
+  const res = await fetchWithTimeout(FORECAST_URL);
   if (!res.ok) {
     return { error: `Forecast API returned ${res.status}` };
   }
@@ -198,7 +203,7 @@ export function formatForecast(payload, area) {
 
 async function getBusArrivals({ stop_code }) {
   const url = `${BUS_URL}?id=${encodeURIComponent(stop_code)}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) {
     return { error: `Bus API returned ${res.status}` };
   }
