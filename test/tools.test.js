@@ -59,3 +59,20 @@ test("every tool fetch carries an abort signal so a hung upstream cannot stall t
     assert.ok(s.init.signal instanceof AbortSignal, s.url);
   }
 });
+
+test("tools reject bad arguments without calling upstream", async () => {
+  const seen = recordFetch();
+  try {
+    for (const args of [{}, { stop_code: "7371" }, { stop_code: "Lavender" }, { stop_code: 7371 }, null]) {
+      const out = JSON.parse(await executeTool("get_bus_arrivals", args, {}));
+      assert.ok(out.error, JSON.stringify(args));
+    }
+    for (const args of [{}, { query: "" }, { query: "   " }, null]) {
+      const out = JSON.parse(await executeTool("find_lunch_places", args, { GOOGLE_PLACES_API_KEY: "k" }));
+      assert.ok(out.error, JSON.stringify(args));
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.equal(seen.length, 0);
+});

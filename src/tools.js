@@ -84,6 +84,7 @@ export const toolDefinitions = [
  * Run one tool call requested by the model and return the result as a string.
  */
 export async function executeTool(name, args, env) {
+  args = args && typeof args === "object" ? args : {};
   switch (name) {
     case "find_lunch_places":
       return JSON.stringify(await findLunchPlaces(args, env));
@@ -120,6 +121,9 @@ function fetchWithTimeout(url, init = {}) {
 }
 
 async function findLunchPlaces(args, env) {
+  if (typeof args.query !== "string" || args.query.trim() === "") {
+    return { error: "query is required" };
+  }
   const body = buildPlacesRequest(args);
 
   const res = await fetchWithTimeout(PLACES_URL, {
@@ -202,6 +206,9 @@ export function formatForecast(payload, area) {
 // ---------------------------------------------------------------------------
 
 async function getBusArrivals({ stop_code }) {
+  if (typeof stop_code !== "string" || !/^\d{5}$/.test(stop_code)) {
+    return { error: "stop_code must be a five-digit bus stop code" };
+  }
   const url = `${BUS_URL}?id=${encodeURIComponent(stop_code)}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) {
