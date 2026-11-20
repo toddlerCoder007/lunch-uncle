@@ -175,3 +175,17 @@ test("the current Singapore time is added to the user message, not the cached pr
   assert.doesNotMatch(msgs[0].content, /Singapore time|Current time/);
   assert.equal(msgs[1].content, "earlier");
 });
+
+test("a missing GOOGLE_PLACES_API_KEY does not short-circuit rain questions to the canned reply", async () => {
+  const calls = stub({
+    llm: (body, n) =>
+      n === 1
+        ? { role: "assistant", content: null, tool_calls: [toolCall("get_rain_forecast", {})] }
+        : say("No rain, can walk."),
+    other: () => ({ data: { items: [{ forecasts: [{ area: "Kallang", forecast: "Fair" }] }] } }),
+  });
+  const reply = await runLoop([], "will it rain?", { OPENCODE_API_KEY: "o" });
+  assert.equal(reply, "No rain, can walk.");
+  assert.notEqual(reply, "Just go Berseh Food Centre lah.");
+  assert.equal(calls.llm.length, 2);
+});

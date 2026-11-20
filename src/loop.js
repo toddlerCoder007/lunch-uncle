@@ -13,7 +13,6 @@ const MAX_OUTPUT_TOKENS = 1500;
 // Stop calling tools once a turn has run this long, then ask for a final answer.
 const TURN_BUDGET_MS = 60_000;
 
-const FALLBACK_REPLY = "Just go Berseh Food Centre lah.";
 const EMPTY_REPLY = "Uncle blur for a moment. Ask again lah.";
 
 /**
@@ -24,10 +23,10 @@ const EMPTY_REPLY = "Uncle blur for a moment. Ask again lah.";
  * real tool run, so a caller can show progress.
  */
 export async function runLoop(history, message, env, onStep = () => {}) {
-  // If the Places key is missing, Uncle cannot search, so give a safe answer.
+  // Without the Places key only find_lunch_places fails (with an error result
+  // the model can explain); rain and bus questions still work.
   if (!env.GOOGLE_PLACES_API_KEY) {
-    console.warn("GOOGLE_PLACES_API_KEY is not set, returning fallback reply");
-    return FALLBACK_REPLY;
+    console.warn("GOOGLE_PLACES_API_KEY is not set, place search will fail");
   }
   if (!env.OPENCODE_API_KEY) {
     throw new Error("OPENCODE_API_KEY is not set");

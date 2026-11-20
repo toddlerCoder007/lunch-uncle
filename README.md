@@ -12,7 +12,7 @@ Lunch Uncle runs as a single Cloudflare Worker. `src/index.js` routes requests: 
 - Each turn runs at most 6 tool calls. Identical calls in a turn reuse the first result.
 - `/chat` rejects messages over 500 characters and history entries over 2,000 characters, and keeps only the last 20 history messages.
 - Tool fetches time out after 8 seconds and return an error result the model can work around.
-- Without `GOOGLE_PLACES_API_KEY`, Uncle always answers with a canned recommendation. Without `OPENCODE_API_KEY`, `/chat` returns a 500 and the log says why.
+- Without `GOOGLE_PLACES_API_KEY`, place search returns an error result, so Uncle says he cannot search; rain and bus questions still work. Without `OPENCODE_API_KEY`, `/chat` returns a 500 and the log says why.
 - `POST /chat` is limited to 10 requests per minute per client IP by the `CHAT_LIMITER` rate limiting binding in `wrangler.toml`; extra requests get a 429 with `Retry-After`. Without the binding (plain local dev) the limit is off.
 - The current Singapore time is appended to the last user message so Uncle can judge lunchtime without changing the cached system prompt.
 

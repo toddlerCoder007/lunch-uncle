@@ -113,3 +113,15 @@ test("formatForecast flags a missing area as an error, not 'Unknown'", () => {
   assert.ok(out.error);
   assert.equal(out.forecast, undefined);
 });
+
+test("find_lunch_places reports a missing Places key instead of calling upstream", async () => {
+  const seen = recordFetch();
+  let out;
+  try {
+    out = JSON.parse(await executeTool("find_lunch_places", { query: "ramen" }, {}));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.match(out.error, /GOOGLE_PLACES_API_KEY/);
+  assert.equal(seen.length, 0);
+});

@@ -130,6 +130,9 @@ async function findLunchPlaces(args, env) {
   if (typeof args.query !== "string" || args.query.trim() === "") {
     return { error: "query is required" };
   }
+  if (!env?.GOOGLE_PLACES_API_KEY) {
+    return { error: "Place search is unavailable: GOOGLE_PLACES_API_KEY is not set" };
+  }
   const body = buildPlacesRequest(args);
 
   const res = await fetchWithTimeout(PLACES_URL, {
