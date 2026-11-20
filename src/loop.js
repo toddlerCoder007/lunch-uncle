@@ -6,6 +6,8 @@ const LLM_MODEL = "glm-5";
 
 const LLM_TIMEOUT_MS = 20_000;
 const MAX_ROUNDS = 8;
+// Uncle replies in under 120 words, but a reasoning model also spends tokens thinking.
+const MAX_OUTPUT_TOKENS = 1500;
 // Stop calling tools once a turn has run this long, then ask for a final answer.
 const TURN_BUDGET_MS = 60_000;
 
@@ -83,6 +85,7 @@ async function callModel(messages, env, sessionId, { withTools = true } = {}) {
     },
     body: JSON.stringify({
       model: LLM_MODEL,
+      max_tokens: MAX_OUTPUT_TOKENS,
       messages,
       ...(withTools ? { tools: toolDefinitions } : {}),
     }),

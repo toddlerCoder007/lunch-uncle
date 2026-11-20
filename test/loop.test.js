@@ -129,3 +129,11 @@ test("a missing OPENCODE_API_KEY fails clearly before any request is made", asyn
   );
   assert.equal(calls.llm.length, 0);
 });
+
+test("completion requests set a bounded max_tokens", async () => {
+  const calls = stub({ llm: () => say("ok") });
+  await runLoop([], "hi", ENV);
+  const max = calls.llm[0].body.max_tokens;
+  assert.equal(typeof max, "number");
+  assert.ok(max > 0 && max <= 2000, `got ${max}`);
+});
