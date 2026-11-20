@@ -73,3 +73,27 @@ test("a tool that throws becomes an error result instead of failing the turn", a
   const toolMsg = calls.llm[1].body.messages.find((m) => m.role === "tool");
   assert.match(toolMsg.content, /error/i);
 });
+
+test("a 200 response without choices fails with a clear error", async () => {
+  stub({ llm: () => ({ raw: { error: "overloaded" } }) });
+  await assert.rejects(() => runLoop([], "hi", ENV), /no message/i);
+});
+
+test("a null or blank model reply becomes a friendly message, not an empty string", async () => {
+  stub({ llm: () => ({ role: "assistant", content: null }) });
+  assert.match(await runLoop([], "hi", ENV), /blur/);
+  stub({ llm: () => say("   ") });
+  assert.match(await runLoop([], "hi", ENV), /blur/);
+});
+
+test("a malformed tool call does not abort the turn and still gets a tool_call_id", async () => {
+  const calls = stub({
+    llm: (body, n) =>
+      n === 1
+        ? { role: "assistant", content: null, tool_calls: [{}] }
+        : say("ok"),
+  });
+  assert.equal(await runLoop([], "hi", ENV), "ok");
+  const toolMsg = calls.llm[1].body.messages.find((m) => m.role === "tool");
+  assert.equal(typeof toolMsg.tool_call_id, "string");
+});

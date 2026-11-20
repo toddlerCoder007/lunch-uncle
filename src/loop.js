@@ -8,6 +8,7 @@ const LLM_TIMEOUT_MS = 20_000;
 const MAX_ROUNDS = 8;
 
 const FALLBACK_REPLY = "Just go Berseh Food Centre lah.";
+const EMPTY_REPLY = "Uncle blur for a moment. Ask again lah.";
 
 /**
  * Run the agentic loop for one user turn and return Uncle's reply.
@@ -36,22 +37,23 @@ export async function runLoop(history, message, env) {
 
     const toolCalls = assistant.tool_calls ?? [];
     if (toolCalls.length === 0) {
-      return assistant.content ?? "";
+      return replyText(assistant);
     }
 
-    for (const call of toolCalls) {
-      const args = parseArgs(call.function.arguments);
-      console.log(`round ${round}: ${call.function.name}`, args);
+    for (const [i, call] of toolCalls.entries()) {
+      const name = call?.function?.name ?? "";
+      const args = parseArgs(call?.function?.arguments);
+      console.log(`round ${round}: ${name}`, args);
       let result;
       try {
-        result = await executeTool(call.function.name, args, env);
+        result = await executeTool(name, args, env);
       } catch (err) {
-        console.error(`tool ${call.function.name} failed:`, err);
+        console.error(`tool ${name} failed:`, err);
         result = JSON.stringify({ error: "Tool failed, try without it." });
       }
       messages.push({
         role: "tool",
-        tool_call_id: call.id,
+        tool_call_id: call?.id ?? `call_${round}_${i}`,
         content: result,
       });
     }
@@ -81,12 +83,24 @@ async function callModel(messages, env, sessionId) {
   }
 
   const data = await res.json();
-  return data.choices[0].message;
+  const message = data?.choices?.[0]?.message;
+  if (!message || typeof message !== "object") {
+    throw new Error(`LLM returned no message: ${JSON.stringify(data).slice(0, 500)}`);
+  }
+  return message;
+}
+
+function replyText(message) {
+  const text = typeof message.content === "string" ? message.content.trim() : "";
+  return text || EMPTY_REPLY;
 }
 
 function parseArgs(raw) {
   try {
-    return JSON.parse(raw || "{}");
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
   } catch {
     return {};
   }
