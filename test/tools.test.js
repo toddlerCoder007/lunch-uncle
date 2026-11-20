@@ -106,3 +106,10 @@ test("formatPlaces drops places beyond walking distance", () => {
 test("Places search is not limited to type 'restaurant', so hawker centres can match", () => {
   assert.equal(buildPlacesRequest({ query: "hawker" }).includedType, undefined);
 });
+
+test("formatForecast flags a missing area as an error, not 'Unknown'", () => {
+  const payload = { data: { items: [{ forecasts: [{ area: "Geylang", forecast: "Fair" }] }] } };
+  const out = formatForecast(payload, "Kallang");
+  assert.ok(out.error);
+  assert.equal(out.forecast, undefined);
+});
