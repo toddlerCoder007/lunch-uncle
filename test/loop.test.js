@@ -40,3 +40,13 @@ test("LLM call targets a real endpoint and model", async () => {
   assert.match(calls.llm[0].url, /^https:\/\/.+\/chat\/completions$/);
   assert.notEqual(calls.llm[0].body.model, "TODO");
 });
+
+test("loop stops after MAX_ROUNDS when the model keeps calling tools", async () => {
+  const calls = stub({
+    llm: () => ({ role: "assistant", content: null, tool_calls: [toolCall("get_rain_forecast", {})] }),
+    other: () => ({ data: { items: [{ forecasts: [{ area: "Kallang", forecast: "Fair" }] }] } }),
+  });
+  const reply = await runLoop([], "will it rain", ENV);
+  assert.equal(typeof reply, "string");
+  assert.equal(calls.llm.length, 8);
+});
