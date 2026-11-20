@@ -190,9 +190,9 @@ test("a missing GOOGLE_PLACES_API_KEY does not short-circuit rain questions to t
   assert.equal(calls.llm.length, 2);
 });
 
-test("the model id is one the OpenCode Go endpoint serves (glm-5 is not; glm-5.3 is)", async () => {
+test("the model id is one the OpenCode Go endpoint serves", async () => {
   const calls = stub({ llm: () => say("ok") });
   await runLoop([], "hi", ENV);
   // Checked against https://opencode.ai/inference/go/openai/v1/models on 2026-11-20.
-  assert.equal(calls.llm[0].body.model, "glm-5.3");
+  assert.equal(calls.llm[0].body.model, "deepseek-v4.1-flash");
 });
