@@ -17,7 +17,20 @@ export const MAX_BUS_SERVICES = 8;
 
 // Only what formatPlaces reads; a wider mask can bill at a higher tier.
 export const PLACES_FIELD_MASK =
-  "places.displayName,places.location,places.rating,places.currentOpeningHours";
+  "places.displayName,places.location,places.rating,places.currentOpeningHours,places.types";
+
+// Without a type filter in the search, a query like "japanese" can match a hair
+// salon, so keep only places Google types as somewhere to eat or drink.
+const FOOD_TYPES = new Set([
+  "restaurant", "food", "food_court", "cafe", "coffee_shop", "bakery", "bar",
+  "meal_takeaway", "meal_delivery", "dessert_shop", "ice_cream_shop", "sandwich_shop",
+  "snack_bar", "tea_house", "juice_shop", "deli", "diner",
+]);
+function isFoodPlace(types) {
+  // Unknown type: keep it, the model can judge from the name.
+  if (!Array.isArray(types) || types.length === 0) return true;
+  return types.some((t) => FOOD_TYPES.has(t) || t.endsWith("_restaurant"));
+}
 const FORECAST_AREA = "Kallang";
 const TOOL_TIMEOUT_MS = 8_000;
 
@@ -158,6 +171,7 @@ async function findLunchPlaces(args, env) {
  */
 export function formatPlaces(places, origin) {
   return places
+    .filter((p) => isFoodPlace(p.types))
     .map(({ displayName, rating, location, currentOpeningHours }) => ({
       name: displayName?.text ?? "Unnamed",
       rating: rating ?? null,

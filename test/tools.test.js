@@ -125,3 +125,21 @@ test("find_lunch_places reports a missing Places key instead of calling upstream
   assert.match(out.error, /GOOGLE_PLACES_API_KEY/);
   assert.equal(seen.length, 0);
 });
+
+test("formatPlaces drops non-food places such as a hair salon", () => {
+  const at = { location: { latitude: 1.3073, longitude: 103.8631 } };
+  const places = [
+    { displayName: { text: "Hair Salon" }, types: ["hair_salon", "point_of_interest"], ...at },
+    { displayName: { text: "Ramen Bar" }, types: ["japanese_restaurant", "restaurant", "food"], ...at },
+    { displayName: { text: "Berseh Food Centre" }, types: ["food_court", "point_of_interest"], ...at },
+    { displayName: { text: "Kopi Corner" }, types: ["cafe"], ...at },
+    { displayName: { text: "Bakery" }, types: ["bakery", "store"], ...at },
+    { displayName: { text: "Unknown Type" }, ...at },
+  ];
+  const names = formatPlaces(places, CT_HUB_2).map((p) => p.name);
+  assert.deepEqual(names, ["Ramen Bar", "Berseh Food Centre", "Kopi Corner", "Bakery", "Unknown Type"]);
+});
+
+test("Places field mask includes types so food places can be told apart", () => {
+  assert.ok(PLACES_FIELD_MASK.split(",").includes("places.types"));
+});
