@@ -11,3 +11,12 @@ fallthrough = false
 # Secrets (OPENCODE_API_KEY, GOOGLE_PLACES_API_KEY) are set with
 # `wrangler secret put` for deploys and `.env` for local development.
 # Never put them in this file.
+
+# Per-client limit on POST /chat (Workers Rate Limiting binding). The period
+# must be 10 or 60 seconds. Raise `limit` if real users hit it.
+[[ratelimits]]
+name = "CHAT_LIMITER"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 10
+  period = 60

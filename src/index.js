@@ -1,6 +1,7 @@
 import ui from "./ui.html";
 import { runLoop } from "./loop.js";
 import { validateChatBody } from "./validate.js";
+import { allowRequest } from "./ratelimit.js";
 
 export default {
   async fetch(request, env) {
@@ -21,6 +22,16 @@ export default {
 };
 
 async function handleChat(request, env) {
+  if (!(await allowRequest(env, request))) {
+    return new Response(
+      JSON.stringify({ error: "Uncle needs a break. Try again in a minute." }),
+      {
+        status: 429,
+        headers: { "content-type": "application/json", "retry-after": "60" },
+      },
+    );
+  }
+
   let body;
   try {
     body = await request.json();
