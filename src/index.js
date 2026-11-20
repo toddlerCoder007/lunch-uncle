@@ -45,6 +45,10 @@ async function handleChat(request, env) {
   }
   const { history, message } = checked;
 
+  if (request.headers.get("accept")?.includes("text/event-stream")) {
+    return streamChat(history, message, env);
+  }
+
   try {
     const reply = await runLoop(history, message, env);
     return json({ reply });
@@ -52,6 +56,34 @@ async function handleChat(request, env) {
     console.error("chat failed:", err);
     return json({ error: "Uncle cannot think right now, try again later." }, 500);
   }
+}
+
+// Server-sent events: "step" while tools run, then one "reply" or "error".
+function streamChat(history, message, env) {
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+  const emit = (event, data) =>
+    writer.write(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)).catch(() => {});
+
+  (async () => {
+    try {
+      const reply = await runLoop(history, message, env, (step) => emit("step", step));
+      await emit("reply", { reply });
+    } catch (err) {
+      console.error("chat failed:", err);
+      await emit("error", { error: "Uncle cannot think right now, try again later." });
+    } finally {
+      await writer.close().catch(() => {});
+    }
+  })();
+
+  return new Response(readable, {
+    headers: {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache",
+    },
+  });
 }
 
 function json(data, status = 200) {

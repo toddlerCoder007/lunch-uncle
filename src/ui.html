@@ -4,100 +4,271 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lunch Uncle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --uncle: #fde68a; --you: #dbeafe; --ink: #1f2937; }
+    :root {
+      --green: #1f5c4a;
+      --yolk: #f2b632;
+      --chilli: #b8281f;
+      --bone: #f6f0e2;
+      --ink: #1b2b25;
+      --slab: "Alfa Slab One", Georgia, serif;
+    }
     * { box-sizing: border-box; }
     body {
-      margin: 0; font-family: system-ui, sans-serif; color: var(--ink);
-      background: #f9fafb; display: flex; flex-direction: column; height: 100vh;
+      margin: 0; font-family: Figtree, system-ui, sans-serif; color: var(--ink);
+      background: var(--bone); display: flex; flex-direction: column; height: 100vh; height: 100dvh;
     }
-    header { padding: 1rem; background: #fff; border-bottom: 1px solid #e5e7eb; }
-    header h1 { margin: 0; font-size: 1.25rem; }
-    header p { margin: .25rem 0 0; color: #6b7280; font-size: .875rem; }
-    #chat { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
-    .bubble {
-      max-width: 75%; padding: .6rem .9rem; border-radius: 1rem; line-height: 1.4;
-      white-space: pre-wrap; word-wrap: break-word;
+    .shell { width: 100%; max-width: 640px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--bone); }
+
+    header {
+      background: var(--green); border-bottom: 6px solid var(--yolk);
+      padding: 1rem 1.25rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
     }
-    .uncle { background: var(--uncle); align-self: flex-start; border-bottom-left-radius: .25rem; }
-    .you { background: var(--you); align-self: flex-end; border-bottom-right-radius: .25rem; }
-    form { display: flex; gap: .5rem; padding: 1rem; background: #fff; border-top: 1px solid #e5e7eb; }
-    input { flex: 1; padding: .6rem .9rem; font-size: 1rem; border: 1px solid #d1d5db; border-radius: .5rem; }
-    button { padding: .6rem 1.2rem; font-size: 1rem; border: 0; border-radius: .5rem; background: var(--ink); color: #fff; cursor: pointer; }
-    button:disabled { opacity: .5; cursor: default; }
+    header h1 { margin: 0; font: 400 2rem/1 var(--slab); color: var(--yolk); letter-spacing: .5px; }
+    header p { margin: .4rem 0 0; color: var(--bone); font-size: .875rem; line-height: 1.4; }
+    #reset {
+      min-height: 44px; padding: 0 .9rem; border: 2px solid var(--yolk); border-radius: 22px;
+      background: transparent; color: var(--yolk); font: 600 .875rem Figtree, sans-serif; cursor: pointer; flex: none;
+    }
+
+    #chat { flex: 1; overflow-y: auto; padding: 1.25rem 1rem .5rem; display: flex; flex-direction: column; gap: .875rem; }
+    .bubble { max-width: 85%; padding: .7rem .9rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; }
+    .uncle { background: var(--green); color: var(--bone); align-self: flex-start; border-radius: 6px 18px 18px 18px; }
+    .uncle strong { font-family: var(--slab); font-weight: 400; color: var(--yolk); }
+    .you { background: var(--yolk); color: var(--ink); align-self: flex-end; border-radius: 18px 6px 18px 18px; font-weight: 600; }
+    .error { background: var(--bone); color: var(--chilli); border: 2px solid var(--chilli); font-weight: 600; }
+
+    .working { display: flex; flex-direction: column; gap: .5rem; font-size: .9rem; }
+    .working span { display: flex; align-items: center; gap: .5rem; }
+    .working i {
+      width: .6rem; height: .6rem; border-radius: 50%; background: var(--yolk);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .working .done i { animation: none; opacity: 1; background: var(--bone); }
+    @keyframes pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+
+    #starters { display: flex; flex-wrap: wrap; gap: .5rem; padding: .25rem 1rem .75rem; }
+    #starters[hidden] { display: none; }
+    #starters button {
+      min-height: 44px; padding: 0 1rem; border-radius: 22px; border: 2px solid var(--green);
+      background: transparent; color: var(--green); font: 600 .9rem Figtree, sans-serif; cursor: pointer;
+    }
+    #starters button:hover { background: var(--green); color: var(--bone); }
+
+    form { display: flex; gap: .625rem; padding: .75rem 1rem 1rem; border-top: 2px dashed var(--green); background: var(--bone); }
+    input {
+      flex: 1; min-width: 0; min-height: 48px; padding: 0 1rem; font: 400 1rem Figtree, sans-serif; color: var(--ink);
+      background: #fff; border: 2px solid var(--green); border-radius: 24px;
+    }
+    #send { min-height: 48px; padding: 0 1.25rem; border: 0; border-radius: 24px; background: var(--chilli); color: #fff; font: 700 1rem Figtree, sans-serif; cursor: pointer; }
+    #send:disabled { opacity: .5; cursor: default; }
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--yolk); outline-offset: 2px; }
+    header button:focus-visible { outline-color: var(--bone); }
+
+    @media (prefers-reduced-motion: reduce) { .working i { animation: none; opacity: 1; } }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Lunch Uncle</h1>
-    <p>Tell Uncle what you feel like eating. He is at CT Hub 2, Lavender.</p>
-  </header>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>Lunch Uncle</h1>
+        <p>Stall at CT Hub 2, Lavender. Tell Uncle what you feel like.</p>
+      </div>
+      <button id="reset" type="button" hidden>New chat</button>
+    </header>
 
-  <div id="chat"></div>
+    <div id="chat" role="log" aria-live="polite"></div>
 
-  <form id="form">
-    <input id="input" placeholder="Uncle, where to eat?" autocomplete="off" autofocus>
-    <button id="send" type="submit">Send</button>
-  </form>
+    <div id="starters">
+      <button type="button">Hot and tired</button>
+      <button type="button">Something quick</button>
+      <button type="button">Raining, don't want to walk</button>
+      <button type="button">Under $8</button>
+    </div>
+
+    <form id="form">
+      <label for="input" hidden>Message for Uncle</label>
+      <input id="input" placeholder="Uncle, where to eat?" autocomplete="off" autofocus>
+      <button id="send" type="submit">Send</button>
+    </form>
+  </div>
 
   <script>
     const chat = document.getElementById("chat");
     const form = document.getElementById("form");
     const input = document.getElementById("input");
     const send = document.getElementById("send");
+    const starters = document.getElementById("starters");
+    const reset = document.getElementById("reset");
+
+    const GREETING = "Eh, what you want to eat? Don't waste my time.";
 
     // Conversation so far, in the shape the /chat endpoint expects.
-    const history = [];
+    let history = [];
+
+    // Show **bold** as strong text without ever treating the reply as HTML.
+    function renderText(el, text) {
+      el.textContent = "";
+      text.split(/(\*\*[^*]+\*\*)/).forEach((part) => {
+        if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+          const strong = document.createElement("strong");
+          strong.textContent = part.slice(2, -2);
+          el.appendChild(strong);
+        } else if (part) {
+          el.appendChild(document.createTextNode(part));
+        }
+      });
+    }
 
     function addBubble(role, text) {
       const div = document.createElement("div");
       div.className = `bubble ${role === "user" ? "you" : "uncle"}`;
-      div.textContent = text;
+      renderText(div, text);
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
       return div;
     }
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const message = input.value.trim();
-      if (!message) return;
+    const STEP_LABELS = {
+      get_rain_forecast: ["Checking the rain", "Checked the rain"],
+      get_bus_arrivals: ["Checking the buses", "Checked the buses"],
+      find_lunch_places: ["Finding food nearby", "Found food nearby"],
+    };
 
+    // Progress list inside Uncle's pending bubble. Rows appear as the server
+    // reports each tool starting, and turn into ticks when it finishes.
+    function createWorking(div) {
+      div.textContent = "";
+      const list = document.createElement("div");
+      list.className = "working";
+      div.appendChild(list);
+      const rows = new Map();
+      const addRow = (text) => {
+        const row = document.createElement("span");
+        row.appendChild(document.createElement("i"));
+        row.appendChild(document.createTextNode(text));
+        list.appendChild(row);
+        chat.scrollTop = chat.scrollHeight;
+        return row;
+      };
+      let first = addRow("Uncle thinking");
+      return ({ tool, state }) => {
+        const labels = STEP_LABELS[tool];
+        if (!labels) return;
+        if (first) { first.remove(); first = null; }
+        let row = rows.get(tool);
+        if (!row) { row = addRow(labels[0]); rows.set(tool, row); }
+        if (state === "done") {
+          row.className = "done";
+          row.lastChild.textContent = labels[1];
+        }
+      };
+    }
+
+    // Read a server-sent event stream, calling onEvent(name, data) for each event.
+    async function readEvents(res, onEvent) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let end;
+        while ((end = buffer.indexOf("\n\n")) !== -1) {
+          const block = buffer.slice(0, end);
+          buffer = buffer.slice(end + 2);
+          let name = "message";
+          let data = "";
+          for (const line of block.split("\n")) {
+            if (line.startsWith("event: ")) name = line.slice(7);
+            else if (line.startsWith("data: ")) data += line.slice(6);
+          }
+          try { onEvent(name, JSON.parse(data)); } catch { /* ignore a malformed event */ }
+        }
+      }
+    }
+
+    function showError(div, text) {
+      div.classList.add("error");
+      renderText(div, text);
+    }
+
+    async function ask(message) {
       input.value = "";
       send.disabled = true;
+      starters.hidden = true;
+      reset.hidden = false;
       addBubble("user", message);
-      const thinking = addBubble("assistant", "Uncle thinking...");
+      const thinking = addBubble("assistant", "");
+      const onStep = createWorking(thinking);
 
       try {
         const res = await fetch("/chat", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", accept: "text/event-stream" },
           body: JSON.stringify({ history, message }),
         });
         let data = null;
-        try {
-          data = await res.json();
-        } catch {
-          // Non-JSON body, e.g. a proxy error page.
+        if (res.ok && res.headers.get("content-type")?.includes("text/event-stream")) {
+          await readEvents(res, (name, payload) => {
+            if (name === "step") onStep(payload);
+            else if (name === "reply") data = payload;
+            else if (name === "error") data = { error: payload.error };
+          });
+          if (data && !data.reply) {
+            showError(thinking, data.error);
+            return;
+          }
+        } else {
+          try {
+            data = await res.json();
+          } catch {
+            // Non-JSON body, e.g. a proxy error page.
+          }
         }
         if (!res.ok || typeof data?.reply !== "string" || data.reply === "") {
           // Show the problem, but keep it out of the conversation history.
-          thinking.textContent =
-            data?.error ?? `Uncle cannot answer right now (${res.status}).`;
+          showError(thinking, data?.error ?? `Uncle cannot answer right now (${res.status}). Try again.`);
           return;
         }
-        thinking.textContent = data.reply;
+        renderText(thinking, data.reply);
         history.push({ role: "user", content: message });
         history.push({ role: "assistant", content: data.reply });
       } catch (err) {
-        thinking.textContent = "Cannot reach Uncle. Try again.";
+        showError(thinking, "Cannot reach Uncle. Check your connection and try again.");
       } finally {
         send.disabled = false;
         input.focus();
+        chat.scrollTop = chat.scrollHeight;
       }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = input.value.trim();
+      if (message && !send.disabled) ask(message);
     });
 
-    addBubble("assistant", "Eh, what you want to eat? Don't waste my time.");
+    starters.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (button && !send.disabled) ask(button.textContent);
+    });
+
+    reset.addEventListener("click", () => {
+      history = [];
+      chat.textContent = "";
+      addBubble("assistant", GREETING);
+      starters.hidden = false;
+      reset.hidden = true;
+      input.focus();
+    });
+
+    addBubble("assistant", GREETING);
   </script>
 </body>
 </html>

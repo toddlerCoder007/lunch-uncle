@@ -20,8 +20,10 @@ const EMPTY_REPLY = "Uncle blur for a moment. Ask again lah.";
  * Run the agentic loop for one user turn and return Uncle's reply.
  *
  * history is the prior conversation as OpenAI-style {role, content} messages.
+ * onStep, if given, is called with {tool, state: "start" | "done"} around each
+ * real tool run, so a caller can show progress.
  */
-export async function runLoop(history, message, env) {
+export async function runLoop(history, message, env, onStep = () => {}) {
   // If the Places key is missing, Uncle cannot search, so give a safe answer.
   if (!env.GOOGLE_PLACES_API_KEY) {
     console.warn("GOOGLE_PLACES_API_KEY is not set, returning fallback reply");
@@ -67,12 +69,14 @@ export async function runLoop(history, message, env) {
           result = JSON.stringify({ error: "Too many tool calls, answer with what you have." });
         } else {
           toolRuns++;
+          onStep({ tool: name, state: "start" });
           try {
             result = await executeTool(name, args, env);
           } catch (err) {
             console.error(`tool ${name} failed:`, err);
             result = JSON.stringify({ error: "Tool failed, try without it." });
           }
+          onStep({ tool: name, state: "done" });
           toolResults.set(key, result);
         }
       }
