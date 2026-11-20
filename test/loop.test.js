@@ -120,3 +120,12 @@ test("a malformed tool call does not abort the turn and still gets a tool_call_i
   const toolMsg = calls.llm[1].body.messages.find((m) => m.role === "tool");
   assert.equal(typeof toolMsg.tool_call_id, "string");
 });
+
+test("a missing OPENCODE_API_KEY fails clearly before any request is made", async () => {
+  const calls = stub({ llm: () => say("ok") });
+  await assert.rejects(
+    () => runLoop([], "hi", { GOOGLE_PLACES_API_KEY: "g" }),
+    /OPENCODE_API_KEY/,
+  );
+  assert.equal(calls.llm.length, 0);
+});

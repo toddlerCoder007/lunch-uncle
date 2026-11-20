@@ -20,7 +20,11 @@ const EMPTY_REPLY = "Uncle blur for a moment. Ask again lah.";
 export async function runLoop(history, message, env) {
   // If the Places key is missing, Uncle cannot search, so give a safe answer.
   if (!env.GOOGLE_PLACES_API_KEY) {
+    console.warn("GOOGLE_PLACES_API_KEY is not set, returning fallback reply");
     return FALLBACK_REPLY;
+  }
+  if (!env.OPENCODE_API_KEY) {
+    throw new Error("OPENCODE_API_KEY is not set");
   }
 
   const messages = [
