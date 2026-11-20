@@ -1,5 +1,6 @@
 import ui from "./ui.html";
 import { runLoop } from "./loop.js";
+import { validateChatBody } from "./validate.js";
 
 export default {
   async fetch(request, env) {
@@ -27,10 +28,11 @@ async function handleChat(request, env) {
     return json({ error: "Body must be JSON" }, 400);
   }
 
-  const { history = [], message } = body;
-  if (typeof message !== "string" || message.trim() === "") {
-    return json({ error: "message is required" }, 400);
+  const checked = validateChatBody(body);
+  if (checked.error) {
+    return json({ error: checked.error }, 400);
   }
+  const { history, message } = checked;
 
   try {
     const reply = await runLoop(history, message, env);
