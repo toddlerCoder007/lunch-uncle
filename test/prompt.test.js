@@ -22,3 +22,9 @@ test("timeContext reports Singapore time, not UTC", () => {
   assert.match(pastMidnight, /Saturday/);
   assert.match(pastMidnight, /00:30/);
 });
+
+test("system prompt says how to treat unknown opening hours and distance", () => {
+  const p = buildSystemPrompt();
+  assert.match(p, /open_now is null/);
+  assert.match(p, /distance_m/);
+});
