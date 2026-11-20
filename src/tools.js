@@ -10,6 +10,8 @@
 export const CT_HUB_2 = { latitude: 1.3115, longitude: 103.8615 };
 
 const SEARCH_RADIUS_METRES = 800;
+// locationBias is only a hint, so drop results that are too far to walk at lunch.
+export const WALKING_LIMIT_M = 1200;
 const MAX_PLACES = 10;
 export const MAX_BUS_SERVICES = 8;
 
@@ -112,7 +114,6 @@ export async function executeTool(name, args, env) {
 export function buildPlacesRequest({ query, open_now = false }) {
   return {
     textQuery: query,
-    includedType: "restaurant",
     openNow: open_now,
     pageSize: MAX_PLACES,
     locationBias: {
@@ -153,12 +154,14 @@ async function findLunchPlaces(args, env) {
  * Shape Places API results into the fields Uncle needs.
  */
 export function formatPlaces(places, origin) {
-  return places.map(({ displayName, rating, location, currentOpeningHours }) => ({
-    name: displayName?.text ?? "Unnamed",
-    rating: rating ?? null,
-    distance_m: location ? Math.round(haversineMetres(origin, location)) : null,
-    open_now: currentOpeningHours?.openNow ?? null,
-  }));
+  return places
+    .map(({ displayName, rating, location, currentOpeningHours }) => ({
+      name: displayName?.text ?? "Unnamed",
+      rating: rating ?? null,
+      distance_m: location ? Math.round(haversineMetres(origin, location)) : null,
+      open_now: currentOpeningHours?.openNow ?? null,
+    }))
+    .filter((p) => p.distance_m === null || p.distance_m <= WALKING_LIMIT_M);
 }
 
 /**

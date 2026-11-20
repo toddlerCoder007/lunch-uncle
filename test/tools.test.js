@@ -92,3 +92,17 @@ test("formatBusArrivals caps how many services it returns", () => {
   const out = formatBusArrivals({ services }, "07371");
   assert.equal(out.services.length, MAX_BUS_SERVICES);
 });
+
+import { WALKING_LIMIT_M } from "../src/tools.js";
+
+test("formatPlaces drops places beyond walking distance", () => {
+  const near = { displayName: { text: "Near" }, location: { latitude: 1.3073, longitude: 103.8631 } };
+  const far = { displayName: { text: "Far" }, location: { latitude: 1.3500, longitude: 103.9500 } };
+  const out = formatPlaces([far, near], CT_HUB_2);
+  assert.deepEqual(out.map((p) => p.name), ["Near"]);
+  assert.ok(out[0].distance_m <= WALKING_LIMIT_M);
+});
+
+test("Places search is not limited to type 'restaurant', so hawker centres can match", () => {
+  assert.equal(buildPlacesRequest({ query: "hawker" }).includedType, undefined);
+});
