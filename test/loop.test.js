@@ -1,4 +1,4 @@
-import { test, afterEach } from "node:test";
+import { test, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { runLoop } from "../src/loop.js";
 
@@ -41,14 +41,37 @@ test("LLM call targets a real endpoint and model", async () => {
   assert.notEqual(calls.llm[0].body.model, "TODO");
 });
 
-test("loop stops after MAX_ROUNDS when the model keeps calling tools", async () => {
+test("after MAX_ROUNDS the model is asked for a final answer without tools", async () => {
   const calls = stub({
-    llm: () => ({ role: "assistant", content: null, tool_calls: [toolCall("get_rain_forecast", {})] }),
+    llm: (body) =>
+      body.tools
+        ? { role: "assistant", content: null, tool_calls: [toolCall("get_rain_forecast", {})] }
+        : say("final answer from the tool results"),
     other: () => ({ data: { items: [{ forecasts: [{ area: "Kallang", forecast: "Fair" }] }] } }),
   });
   const reply = await runLoop([], "will it rain", ENV);
-  assert.equal(typeof reply, "string");
-  assert.equal(calls.llm.length, 8);
+  assert.equal(reply, "final answer from the tool results");
+  assert.equal(calls.llm.length, 9);
+  assert.equal(calls.llm.at(-1).body.tools, undefined);
+});
+
+test("a turn that exceeds its time budget stops calling tools and answers", async () => {
+  let t = 1_000_000;
+  mock.method(Date, "now", () => (t += 40_000));
+  try {
+    const calls = stub({
+      llm: (body) =>
+        body.tools
+          ? { role: "assistant", content: null, tool_calls: [toolCall("get_rain_forecast", {})] }
+          : say("answer before the deadline"),
+      other: () => ({ data: { items: [{ forecasts: [] }] } }),
+    });
+    const reply = await runLoop([], "will it rain", ENV);
+    assert.equal(reply, "answer before the deadline");
+    assert.equal(calls.llm.length, 2);
+  } finally {
+    mock.restoreAll();
+  }
 });
 
 test("food questions reach the model instead of the canned fallback", async () => {

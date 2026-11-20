@@ -6,6 +6,8 @@ const LLM_MODEL = "glm-5";
 
 const LLM_TIMEOUT_MS = 20_000;
 const MAX_ROUNDS = 8;
+// Stop calling tools once a turn has run this long, then ask for a final answer.
+const TURN_BUDGET_MS = 60_000;
 
 const FALLBACK_REPLY = "Just go Berseh Food Centre lah.";
 const EMPTY_REPLY = "Uncle blur for a moment. Ask again lah.";
@@ -31,7 +33,9 @@ export async function runLoop(history, message, env) {
   // so the OpenCode Go endpoint can route and cache consistently.
   const sessionId = crypto.randomUUID();
 
-  for (let round = 0; round < MAX_ROUNDS; round++) {
+  const deadline = Date.now() + TURN_BUDGET_MS;
+
+  for (let round = 0; round < MAX_ROUNDS && Date.now() < deadline; round++) {
     const assistant = await callModel(messages, env, sessionId);
     messages.push(assistant);
 
@@ -59,10 +63,13 @@ export async function runLoop(history, message, env) {
     }
   }
 
-  return "Uncle tried too many times already. Ask something simpler.";
+  // Out of rounds or time: the tool results are already collected, so ask for
+  // an answer without offering tools instead of throwing the work away.
+  const final = await callModel(messages, env, sessionId, { withTools: false });
+  return replyText(final);
 }
 
-async function callModel(messages, env, sessionId) {
+async function callModel(messages, env, sessionId, { withTools = true } = {}) {
   const res = await fetch(`${LLM_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -73,7 +80,7 @@ async function callModel(messages, env, sessionId) {
     body: JSON.stringify({
       model: LLM_MODEL,
       messages,
-      tools: toolDefinitions,
+      ...(withTools ? { tools: toolDefinitions } : {}),
     }),
     signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
