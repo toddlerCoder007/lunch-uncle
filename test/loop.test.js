@@ -50,3 +50,10 @@ test("loop stops after MAX_ROUNDS when the model keeps calling tools", async () 
   assert.equal(typeof reply, "string");
   assert.equal(calls.llm.length, 8);
 });
+
+test("food questions reach the model instead of the canned fallback", async () => {
+  const calls = stub({ llm: () => say("Go Tiong Bahru lah.") });
+  const reply = await runLoop([], "where to eat lunch?", ENV);
+  assert.equal(reply, "Go Tiong Bahru lah.");
+  assert.equal(calls.llm.length, 1);
+});
