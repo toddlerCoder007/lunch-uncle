@@ -11,6 +11,11 @@ export const CT_HUB_2 = { latitude: 1.3115, longitude: 103.8615 };
 
 const SEARCH_RADIUS_METRES = 800;
 const MAX_PLACES = 10;
+export const MAX_BUS_SERVICES = 8;
+
+// Only what formatPlaces reads; a wider mask can bill at a higher tier.
+export const PLACES_FIELD_MASK =
+  "places.displayName,places.location,places.rating,places.currentOpeningHours";
 const FORECAST_AREA = "Kallang";
 const TOOL_TIMEOUT_MS = 8_000;
 
@@ -131,8 +136,7 @@ async function findLunchPlaces(args, env) {
     headers: {
       "content-type": "application/json",
       "X-Goog-Api-Key": env.GOOGLE_PLACES_API_KEY,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.location,places.rating,places.currentOpeningHours",
+      "X-Goog-FieldMask": PLACES_FIELD_MASK,
     },
     body: JSON.stringify(body),
   });
@@ -224,7 +228,7 @@ export function formatBusArrivals(payload, stopCode) {
   const services = payload?.services ?? [];
   return {
     stop_code: stopCode,
-    services: services.map((s) => ({
+    services: services.slice(0, MAX_BUS_SERVICES).map((s) => ({
       service: s.no,
       next_min: minutesFromNow(s.next),
       subsequent_min: minutesFromNow(s.subsequent),

@@ -76,3 +76,19 @@ test("tools reject bad arguments without calling upstream", async () => {
   }
   assert.equal(seen.length, 0);
 });
+
+import { PLACES_FIELD_MASK, formatBusArrivals, MAX_BUS_SERVICES } from "../src/tools.js";
+
+test("Places field mask asks only for fields the formatter uses", () => {
+  const fields = PLACES_FIELD_MASK.split(",");
+  assert.ok(!fields.includes("places.id"));
+  for (const f of ["places.displayName", "places.location", "places.rating", "places.currentOpeningHours"]) {
+    assert.ok(fields.includes(f), f);
+  }
+});
+
+test("formatBusArrivals caps how many services it returns", () => {
+  const services = Array.from({ length: 30 }, (_, i) => ({ no: String(i), next: { duration_ms: 60_000 } }));
+  const out = formatBusArrivals({ services }, "07371");
+  assert.equal(out.services.length, MAX_BUS_SERVICES);
+});
