@@ -6,6 +6,15 @@ Lunch Uncle is a chatbot that tells you where to eat lunch near CT Hub 2, Lavend
 
 Lunch Uncle runs as a single Cloudflare Worker. `src/index.js` routes requests: `GET /` serves the chat page from `src/ui.html`, and `POST /chat` hands the turn to the agentic loop in `src/loop.js`. The loop calls an OpenAI-compatible chat completions endpoint, passing the tool definitions from `src/tools.js`. When the model asks for a tool call, the loop runs it, appends the result to the message list, and calls the model again. This repeats until the model gives a final answer with no more tool calls. `src/prompt.js` builds the system prompt that sets Uncle's persona and rules. There are three tools: `find_lunch_places`, which queries the Google Places API (New) Text Search, biased towards CT Hub 2; `get_rain_forecast`, which reads the two-hour forecast from data.gov.sg (no key needed); and `get_bus_arrivals`, which reads live arrivals from arrivelah (no key needed).
 
+## Limits and failure behaviour
+
+- The loop makes at most 8 model calls per turn and stops calling tools after 60 seconds. It then asks the model for a final answer without tools, using whatever the tools already returned.
+- Each turn runs at most 6 tool calls. Identical calls in a turn reuse the first result.
+- `/chat` rejects messages over 500 characters and history entries over 2,000 characters, and keeps only the last 20 history messages.
+- Tool fetches time out after 8 seconds and return an error result the model can work around.
+- Without `GOOGLE_PLACES_API_KEY`, Uncle always answers with a canned recommendation. Without `OPENCODE_API_KEY`, `/chat` returns a 500 and the log says why.
+- The current Singapore time is appended to the last user message so Uncle can judge lunchtime without changing the cached system prompt.
+
 ## Request flow
 
 ```mermaid
